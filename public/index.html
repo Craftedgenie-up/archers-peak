@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARCHER'S PEAK — Upstage</title>
+<link rel="icon" type="image/svg+xml" href="assets/upstage-black.svg">
+	<link rel="icon" type="image/png" href="assets/upstage-purple.png">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0a0a1a;overflow:hidden;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;cursor:crosshair}
+  #crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;opacity:0;transition:opacity .3s}
+  #crosshair.visible{opacity:1}
+  #crosshair::before,#crosshair::after{content:'';position:absolute;background:rgba(200,168,255,.7)}
+  #crosshair::before{width:16px;height:2px;top:50%;left:50%;transform:translate(-50%,-50%)}
+  #crosshair::after{width:2px;height:16px;top:50%;left:50%;transform:translate(-50%,-50%)}
+  #crosshair .ch-ring{position:absolute;width:24px;height:24px;border:1.5px solid rgba(200,168,255,.4);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
+  canvas{position:fixed;top:0;left:0;z-index:1}
+  #title-screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;color:#fff;text-align:center;transition:opacity .8s cubic-bezier(.4,0,.2,1),visibility .8s cubic-bezier(.4,0,.2,1);cursor:default;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);background:rgba(10,10,26,.25)}
+  #title-screen.hidden{opacity:0;visibility:hidden;pointer-events:none}
+  #title-screen::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(140,80,255,.12) 0%,rgba(26,26,46,.18) 50%,#0a0a1a 100%);pointer-events:none;z-index:1}
+  #title-screen>*{position:relative;z-index:2}
+  #title-screen h1{font-size:clamp(3em,8vw,5.5em);font-weight:300;letter-spacing:.2em;color:#fff;text-shadow:0 0 100px rgba(140,80,255,.45),0 4px 0 rgba(0,0,0,.15);margin-bottom:.08em;line-height:1;text-transform:uppercase;font-family:'Georgia','Times New Roman',serif}
+  #title-screen .subtitle{font-size:clamp(.9rem,2vw,1.25rem);font-weight:300;letter-spacing:.5em;text-transform:uppercase;color:rgba(200,168,255,.6);margin-bottom:.8em;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif}
+  #title-screen .brand-row{display:flex;gap:28px;align-items:center;margin-bottom:1.5em;flex-wrap:wrap;justify-content:center}
+  #title-screen .brand-img{max-width:144px;max-height:72px;object-fit:contain;filter:brightness(1.3);opacity:.8}
+  #title-screen .key-row{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin:.2em 0}
+  #title-screen .key{width:52px;height:52px;display:inline-flex;align-items:center;justify-content:center;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:1em;font-weight:700;letter-spacing:.04em;color:rgba(200,168,255,.9);background:rgba(255,255,255,.06);border:2px solid rgba(140,80,255,.55);border-radius:10px;transition:all .2s;cursor:default}
+  #title-screen .key:hover{background:rgba(140,80,255,.15);border-color:rgba(200,168,255,.8)}
+  #title-screen .key-sep{color:rgba(180,160,255,.4);font-size:.9em;letter-spacing:.15em;user-select:none;margin:0 .3em}
+  #title-screen .key-wide{min-width:90px;font-size:.82em}
+  #title-screen .instructions{display:flex;flex-direction:column;align-items:center;gap:.4em;margin:.3em 0 .7em}
+  #title-screen .instructions span{font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:clamp(.75rem,1.4vw,.9rem);color:rgba(180,160,255,.5);letter-spacing:.04em}
+  #title-screen .start-btn{margin-top:.6em;padding:.7em 3em;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:clamp(1rem,1.5vw,1.1rem);background:transparent;border:2px solid rgba(140,80,255,.85);color:#c8a8ff;cursor:pointer;letter-spacing:.25em;border-radius:8px;transition:all .35s cubic-bezier(.4,0,.2,1);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  #title-screen .start-btn:hover{background:rgba(140,80,255,.2);border-color:rgba(200,168,255,1);color:#fff;box-shadow:0 0 60px rgba(140,80,255,.35);transform:scale(1.03)}
+  #hud{position:fixed;top:0;left:0;width:100%;padding:12px 24px;display:flex;justify-content:space-between;pointer-events:none;z-index:5;color:#c8a8ff;font-size:.9em;font-weight:300;text-shadow:0 0 12px rgba(140,80,255,.4)}
+  #hud.hidden{display:none}
+  #score-display{text-shadow:0 0 12px rgba(140,80,255,.4)}
+  #timer-display{text-shadow:0 0 12px rgba(140,80,255,.4)}
+  #hits-display{text-shadow:0 0 12px rgba(140,80,255,.4)}
+  #charge-bar-wrap{position:fixed;bottom:12%;left:50%;transform:translateX(-50%);z-index:5;pointer-events:none;text-align:center}
+  #charge-bar-wrap.hidden{display:none}
+  #charge-label{color:#c8a8ff;font-size:.75em;letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;text-shadow:0 0 8px rgba(140,80,255,.3)}
+  #charge-bar{width:180px;height:6px;background:rgba(255,255,255,.08);border:1px solid rgba(140,80,255,.3);border-radius:3px;overflow:hidden}
+  #charge-fill{height:100%;width:0%;background:linear-gradient(90deg,#8c50ff,#c8a8ff);transition:width .04s linear;border-radius:3px}
+  #combo-display{position:fixed;top:32%;left:50%;transform:translateX(-50%);z-index:5;pointer-events:none;color:#c8a8ff;font-size:1.8em;font-weight:300;text-shadow:0 0 20px rgba(140,80,255,.5);opacity:0;transition:opacity .2s}
+  #combo-display.visible{opacity:1}
+  #slowmo-badge{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;color:rgba(140,80,255,.9);font-size:2em;font-weight:300;text-shadow:0 0 28px rgba(140,80,255,.7);opacity:0;transition:opacity .3s;letter-spacing:.1em}
+  #slowmo-badge.visible{opacity:1}
+  #hit-banner{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;color:#c8a8ff;font-size:1.5em;font-weight:300;text-shadow:0 0 18px rgba(140,80,255,.5);opacity:0;transition:opacity .15s}
+  #hit-banner.visible{opacity:1}
+  #end-screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10;background:rgba(10,10,26,.92);color:#fff;text-align:center}
+  #end-screen.active{display:flex}
+  #end-screen h2{font-size:2em;letter-spacing:.2em;font-weight:200;color:#fff;margin-bottom:.2em;text-shadow:0 0 40px rgba(140,80,255,.3)}
+  #final-score{font-size:2.8em;color:#c8a8ff;margin:.4em 0;text-shadow:0 0 20px rgba(140,80,255,.4);font-weight:300}
+  #grade-display{font-size:3.5em;font-weight:200;margin:.4em 0;letter-spacing:.15em}
+  #grade-display.grade-S{color:#c8a8ff;text-shadow:0 0 40px rgba(140,80,255,.6)}
+  #grade-display.grade-A{color:#a888ff;text-shadow:0 0 30px rgba(140,80,255,.4)}
+  #grade-display.grade-B{color:#8c50ff;text-shadow:0 0 25px rgba(140,80,255,.3)}
+  #grade-display.grade-C{color:#6040a0}
+  #name-entry{margin:1em 0}
+  #name-entry input{border:1px solid rgba(140,80,255,.5);background:rgba(255,255,255,.05);color:#c8a8ff;padding:.5em 1em;font-size:1em;font-family:inherit;outline:none;width:200px;border-radius:6px;backdrop-filter:blur(4px)}
+  #name-entry input::placeholder{color:rgba(180,160,255,.4)}
+  #name-entry button{margin-left:.5em;padding:.45em 1.2em;background:transparent;border:1px solid rgba(140,80,255,.6);color:#c8a8ff;cursor:pointer;font-family:inherit;font-size:.85em;border-radius:6px;transition:all .3s}
+  #name-entry button:hover{background:rgba(140,80,255,.2);color:#fff}
+  #leaderboard-container{margin-top:1em;width:340px;max-height:250px;overflow-y:auto}
+  #leaderboard-container h3{font-size:.9em;color:rgba(180,160,255,.6);margin-bottom:.3em;letter-spacing:.1em}
+  .lb-row{display:flex;justify-content:space-between;padding:.3em 0;border-bottom:1px solid rgba(140,80,255,.08);font-size:.85em;color:rgba(200,168,255,.8)}
+  .lb-row.highlighted{background:rgba(140,80,255,.08);border-radius:3px}
+  .lb-place{color:rgba(180,160,255,.4);width:2em}
+  .lb-name{flex:1;text-align:left;padding-left:.5em}
+  .lb-score{color:#c8a8ff;width:3em;text-align:right}
+  #offline-msg{color:rgba(180,160,255,.4);font-size:.8em;margin-top:.5em}
+  #resume-overlay{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:20;background:rgba(10,10,26,.75);color:#c8a8ff;text-align:center}
+  #resume-overlay.active{display:flex}
+  #resume-overlay h2{font-weight:200;font-size:1.8em;margin-bottom:.3em}
+  #resume-overlay p{font-size:.9em;color:rgba(180,160,255,.6);margin-bottom:.8em}
+  #resume-overlay button{margin-top:.5em;padding:.55em 2em;background:transparent;border:1px solid rgba(140,80,255,.6);color:#c8a8ff;cursor:pointer;font-family:inherit;font-size:1em;border-radius:6px;transition:all .3s}
+  #resume-overlay button:hover{background:rgba(140,80,255,.2);color:#fff}
+  ::-webkit-scrollbar{width:5px}
+  ::-webkit-scrollbar-track{background:rgba(255,255,255,.03)}
+  ::-webkit-scrollbar-thumb{background:rgba(140,80,255,.3);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div id="title-screen">
+  <h1>ARCHER'S PEAK</h1>
+  <div class="brand-row">
+    <img class="brand-img" src="assets/solar-open.png" alt="Solar Open">
+  </div>
+  <div class="key-row">
+    <span class="key">W</span>
+    <span class="key">A</span>
+    <span class="key">S</span>
+    <span class="key">D</span>
+    <span class="key-sep">+</span>
+    <span class="key key-wide">SPACE</span>
+  </div>
+  <div class="key-row">
+    <span class="key key-wide">MOUSE</span>
+    <span class="key-sep">&rarr;</span>
+    <span class="key key-wide">LOOK</span>
+  </div>
+  <div class="key-row">
+    <span class="key key-wide">LMB HOLD</span>
+    <span class="key-sep">&rarr;</span>
+    <span class="key key-wide">CHARGE</span>
+    <span class="key-sep">&rarr;</span>
+    <span class="key key-wide">RELEASE</span>
+  </div>
+  <div class="instructions">
+    <span>60 seconds &middot; Hit all targets &middot; Chain combos for bonus points</span>
+  </div>
+  <button class="start-btn" id="start-btn">DRAW BOW</button>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="score-display">SCORE: 0</div>
+  <div id="timer-display">TIME: 60</div>
+  <div id="hits-display">HITS: 0</div>
+</div>
+<div id="crosshair" class="hidden"><div class="ch-ring"></div></div>
+
+<div id="charge-bar-wrap" class="hidden">
+  <div id="charge-label">CHARGING</div>
+  <div id="charge-bar"><div id="charge-fill"></div></div>
+</div>
+
+<div id="combo-display"></div>
+<div id="slowmo-badge">SLOW MOTION</div>
+<div id="hit-banner"></div>
+
+<div id="end-screen">
+  <h2>TIME'S UP</h2>
+  <div id="final-score">0</div>
+  <div id="grade-display" class="grade-C">C</div>
+  <div id="name-entry">
+    <input type="text" id="name-input" placeholder="Your name" maxlength="12">
+    <button id="submit-btn">SUBMIT</button>
+  </div>
+  <div id="leaderboard-container">
+    <h3>LEADERBOARD</h3>
+    <div id="leaderboard-list"></div>
+  </div>
+  <div id="offline-msg" class="hidden">Leaderboard offline</div>
+  <button class="start-btn" id="restart-btn" style="margin-top:1em">PLAY AGAIN</button>
+</div>
+
+<div id="resume-overlay">
+  <h2>PAUSED</h2>
+  <p>Click to resume</p>
+  <button id="resume-btn">RESUME</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous"></script>
+<script>
+// ─── STATE ───
+const G = {
+  state: 'TITLE', // TITLE | PLAYING | ENDED
+  score: 0, hits: 0, timeLeft: 60, combo: 0, comboTimer: 0,
+  charge: 0, charging: false, paused: true, slowMo: 1,
+  playerName: '',
+  maxCharge: 0.9,
+  arrowSpeedMin: 120, arrowSpeedMax: 250,
+  arrowGravity: 10,
+  targetsHit: 0,
+  shakeAmount: 0,
+  bobTimer: 0,
+  lastHitTime: 0,
+};
+
+// ─── PLAYER STATE ───
+const PLAYER_HEIGHT = 1.7;
+let playerVelocity = new THREE.Vector3();
+let playerOnGround = true;
+let playerSpeed = 8;
+const playerPos = new THREE.Vector3(0, PLAYER_HEIGHT, 20);
+let prevSurfaceY = 0; // tracks previous RAW terrain height for drop detection
+let prevOnGround = true; // tracks previous frame's grounded state
+let bowRecoilAmount = 0; // Tracks bow recoil for smooth recovery
+
+// ─── THREE SETUP ───
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.appendChild(renderer.domElement);
+
+// Camera rig
+const pivot = new THREE.Object3D();
+scene.add(pivot);
+pivot.add(camera);
+let yaw = 0, pitch = 0;
+camera.rotation.set(0, 0, 0);
+pivot.rotation.set(0, 0, 0);
+
+// ─── SKY — Upstage purple gradient dome ───
+const skyGeo = new THREE.SphereGeometry(200, 32, 32);
+const skyPositions = skyGeo.attributes.position;
+const skyColors = [];
+const skyBottom = new THREE.Color(0x0e0628);
+const skyMid = new THREE.Color(0x2a1050);
+const skyTop = new THREE.Color(0x0a0a1a);
+for (let i = 0; i < skyPositions.count; i++) {
+  const y = skyPositions.getY(i);
+  const t = Math.max(0, Math.min(1, (y / 200 + 1) / 2));
+  const c = new THREE.Color().lerpColors(skyBottom, skyMid, t);
+  c.lerp(skyTop, Math.pow(t, 0.5));
+  skyColors.push(c.r, c.g, c.b);
+}
+skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(skyColors, 3));
+const skyMat = new THREE.MeshBasicMaterial({
+  vertexColors: true, side: THREE.BackSide, fog: false
+});
+const sky = new THREE.Mesh(skyGeo, skyMat);
+scene.add(sky);
+
+// ─── LIGHTS — Upstage palette ───
+const hemiLight = new THREE.HemisphereLight(0x2a1850, 0x0a0514, 0.7);
+scene.add(hemiLight);
+const sunLight = new THREE.DirectionalLight(0x8860cc, 1.0);
+sunLight.position.set(35, 25, -45);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.left = -60;
+sunLight.shadow.camera.right = 60;
+sunLight.shadow.camera.top = 60;
+sunLight.shadow.camera.bottom = -60;
+sunLight.shadow.camera.near = 1;
+sunLight.shadow.camera.far = 200;
+sunLight.shadow.bias = -0.001;
+scene.add(sunLight);
+
+// ─── FOG — Upstage purple fog ───
+scene.fog = new THREE.FogExp2(0x1a0e30, 0.009);
+
+// ─── TERRAIN CONSTANTS (shared across functions) ───
+const TERRAIN_CELL = 0.8, TERRAIN_GRID = 60, TERRAIN_MAX_LAYERS = 5;
+const TERRAIN_HALF_GRID = (TERRAIN_GRID - 1) / 2;
+const TERRAIN_HALF = TERRAIN_HALF_GRID * TERRAIN_CELL;
+
+// ─── TERRAIN — Minecraft-style voxel blocks ───
+function getTerrainHeight(x, z) {
+  // Map player position to grid cell indices (same as createTerrain)
+  const gx = Math.round(x / TERRAIN_CELL + TERRAIN_HALF_GRID);
+  const gz = Math.round(z / TERRAIN_CELL + TERRAIN_HALF_GRID);
+  if (gx < 0 || gx >= TERRAIN_GRID || gz < 0 || gz >= TERRAIN_GRID) return 0;
+  const bx = (gx - TERRAIN_HALF_GRID) * TERRAIN_CELL;
+  const bz = (gz - TERRAIN_HALF_GRID) * TERRAIN_CELL;
+  const dist = Math.sqrt(bx * bx + bz * bz);
+  let layers = 1;
+  // Exact same formula as createTerrain
+  layers += Math.sin(bx * 0.12) * Math.cos(bz * 0.12) * 1.2;
+  layers += Math.sin(dist * 0.07) * 0.8;
+  layers -= dist > 20 ? (dist - 20) * 0.04 : 0;
+  const hx = Math.abs(Math.sin(gx * 12.9898 + gz * 78.233) * 43758.5453) % 1;
+  layers += hx * 0.3;
+  // Match createTerrain's rounding so collision matches visual blocks
+  const displayLayers = Math.max(1, Math.min(TERRAIN_MAX_LAYERS, Math.round(layers)));
+  return displayLayers * TERRAIN_CELL;
+}
+
+function createTerrain() {
+  const gridSize = 60, cellSize = 0.8;
+  const halfGrid = (gridSize - 1) / 2;
+  const maxLayers = 5;
+  const totalBlocks = gridSize * gridSize * maxLayers;
+  const blockGeo = new THREE.BoxGeometry(cellSize, cellSize, cellSize);
+  const blockMat = new THREE.MeshStandardMaterial({
+    color: 0x3a3050, roughness: 0.92, metalness: 0.05, flatShading: true
+  });
+  const instancedMesh = new THREE.InstancedMesh(blockGeo, blockMat, totalBlocks);
+  instancedMesh.receiveShadow = true;
+  instancedMesh.castShadow = true;
+  const dummy = new THREE.Object3D();
+  let blockCount = 0;
+
+  for (let gx = 0; gx < gridSize; gx++) {
+    for (let gz = 0; gz < gridSize; gz++) {
+      const x = (gx - halfGrid) * cellSize;
+      const z = (gz - halfGrid) * cellSize;
+      const dist = Math.sqrt(x * x + z * z);
+      let layers = 1;
+      // Gentle hills
+      layers += Math.sin(x * 0.12) * Math.cos(z * 0.12) * 1.2;
+      layers += Math.sin(dist * 0.07) * 0.8;
+      // Slope down at edges
+      layers -= dist > 20 ? (dist - 20) * 0.04 : 0;
+      // Small random variation
+      const hx = Math.abs(Math.sin(gx * 12.9898 + gz * 78.233) * 43758.5453) % 1;
+      layers += hx * 0.3;
+      // Use continuous layers for terrain generation too (matches collision formula)
+      const displayLayers = Math.max(1, Math.min(maxLayers, Math.round(layers)));
+
+      for (let ly = 0; ly < displayLayers; ly++) {
+        const y = ly * cellSize;
+        dummy.position.set(x, y, z);
+        dummy.updateMatrix();
+        instancedMesh.setMatrixAt(blockCount, dummy.matrix);
+        blockCount++;
+      }
+    }
+  }
+  instancedMesh.count = blockCount;
+  scene.add(instancedMesh);
+
+  // Brand-colored border stones
+  const stoneGeo = new THREE.BoxGeometry(1, 1, 1);
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x4a3868, roughness: 0.85, metalness: 0.1 });
+  for (let i = 0; i < 80; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 27 + Math.random() * 2;
+    const s = new THREE.Mesh(stoneGeo, stoneMat);
+    s.position.set(Math.cos(a) * r, 0.5, Math.sin(a) * r);
+    s.scale.setScalar(0.5 + Math.random() * 1.5);
+    s.castShadow = true;
+    scene.add(s);
+  }
+}
+createTerrain();
+
+// ─── DUST PARTICLES — Upstage purple dust ───
+const dustCount = 250;
+const dustGeo = new THREE.BufferGeometry();
+const dustPositions = new Float32Array(dustCount * 3);
+const dustSizes = new Float32Array(dustCount);
+for (let i = 0; i < dustCount; i++) {
+  dustPositions[i * 3] = (Math.random() - 0.5) * 100;
+  dustPositions[i * 3 + 1] = Math.random() * 20 + 2;
+  dustPositions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+  dustSizes[i] = Math.random() * 2 + 0.5;
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+dustGeo.setAttribute('size', new THREE.BufferAttribute(dustSizes, 1));
+const dustMat = new THREE.PointsMaterial({
+  color: 0x8c50ff, size: 0.25, transparent: true, opacity: 0.35,
+  sizeAttenuation: true, blending: THREE.AdditiveBlending
+});
+const dustPoints = new THREE.Points(dustGeo, dustMat);
+scene.add(dustPoints);
+
+// ─── BRAND ASSET SPRITES — place PNG logos in the world ───
+const spriteLoader = new THREE.TextureLoader();
+const brandSprites = [];
+function createBrandSprites() {
+  const assets = [
+    { file: 'assets/solar-open.png', pos: [0, 8, 10], scale: 5 },
+  ];
+  assets.forEach(a => {
+    try {
+      const tex = spriteLoader.load(a.file);
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.position.set(a.pos[0], a.pos[1], a.pos[2]);
+      sprite.scale.set(a.scale, a.scale, 1);
+      scene.add(sprite);
+      brandSprites.push(sprite);
+    } catch(e) {}
+  });
+}
+createBrandSprites();
+
+// ─── TARGETS — Flag posts with Solar LLM logo as the flag ───
+const targetGroup = new THREE.Group();
+scene.add(targetGroup);
+const RING_COLORS = [0xffffff, 0x8c50ff, 0xc8a8ff];
+const RING_SIZES = [0.9, 1.6, 2.5];
+const RING_POINTS = [50, 25, 10];
+const targetData = [];
+const ringMeshes = []; // Store ring meshes for direct world-space hit detection
+
+function createTargets() {
+  // Targets placed IN FRONT of spawn (player looks toward -Z direction at spawn)
+  // Player spawns at z=20, so targets at z=5-15 are directly in front
+  // All positions kept within terrain bounds (x: -23.6 to 23.6, z: -23.6 to 23.6)
+  const positions = [
+    [0, 0, 16],    // straight ahead
+    [-18, 0, 8],   // left-front
+    [18, 0, 8],    // right-front
+    [-18, 0, -8],  // left-back
+    [18, 0, -8],   // right-back
+    [0, 0, -16],   // center-back
+  ];
+  const playerSpawn = new THREE.Vector3(0, PLAYER_HEIGHT, 20);
+
+  positions.forEach((posArr, idx) => {
+    const tx = posArr[0], tz = posArr[2];
+    const groundY = getTerrainHeight(tx, tz);
+    const group = new THREE.Group();
+    // Place group at terrain height so rings float above ground
+    group.position.set(tx, groundY, tz);
+    // Face target toward player spawn
+    group.lookAt(playerSpawn);
+
+    // Rings — flat concentric circles in group's local XY plane
+    for (let r = RING_SIZES.length - 1; r >= 0; r--) {
+      const ringGeo = new THREE.CircleGeometry(RING_SIZES[r], 32);
+      const ringMat = new THREE.MeshStandardMaterial({
+        color: RING_COLORS[r], side: THREE.DoubleSide, roughness: 0.5, metalness: 0.2,
+        emissive: RING_COLORS[r], emissiveIntensity: 0.3
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.z = 0;
+      ring.position.y = 0.8; // rings float 0.8 above group origin (ground level)
+      ring.castShadow = true;
+      group.add(ring);
+    }
+
+    // Bullseye center
+    const centerGeo = new THREE.CircleGeometry(0.15, 16);
+    const centerMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, side: THREE.DoubleSide, roughness: 0.4, metalness: 0.3
+    });
+    const center = new THREE.Mesh(centerGeo, centerMat);
+    center.position.set(0, 0.8, 0);
+    center.castShadow = true;
+    group.add(center);
+
+    // Glow ring behind target
+    const glowGeo = new THREE.RingGeometry(RING_SIZES[2] + 0.3, RING_SIZES[2] + 0.6, 32);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x8c50ff, side: THREE.DoubleSide, transparent: true, opacity: 0.15 });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.position.z = -0.05;
+    glow.position.y = 0.8;
+    group.add(glow);
+
+    targetGroup.add(group);
+    targetData.push({
+      group, alive: true, respawnTimer: 0,
+      glowPhase: Math.random() * Math.PI * 2
+    });
+  });
+
+}
+createTargets();
+
+// ─── BOW — visible 3D bow attached to camera ───
+function createBow() {
+  const bow = new THREE.Group();
+
+  // Riser (handle) — dark metal
+  const riserGeo = new THREE.BoxGeometry(0.08, 0.55, 0.18);
+  const riserMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1a2e, roughness: 0.3, metalness: 0.8, envMapIntensity: 0.5
+  });
+  const riser = new THREE.Mesh(riserGeo, riserMat);
+  riser.position.set(0, -0.15, 0);
+  riser.castShadow = true;
+  bow.add(riser);
+
+  // Grip wrap — brand purple
+  const gripGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.3, 8);
+  const gripMat = new THREE.MeshStandardMaterial({ color: 0x8c50ff, roughness: 0.8, metalness: 0.1 });
+  const grip = new THREE.Mesh(gripGeo, gripMat);
+  grip.rotation.x = Math.PI / 2;
+  grip.position.set(0, -0.15, 0);
+  bow.add(grip);
+
+  // Limbs — curved bow arms using scaled box segments
+  const limbMat = new THREE.MeshStandardMaterial({
+    color: 0xc8a8ff, roughness: 0.4, metalness: 0.3, side: THREE.DoubleSide
+  });
+  // Upper limb
+  const ulGeo = new THREE.BoxGeometry(0.03, 0.55, 0.06);
+  const ul = new THREE.Mesh(ulGeo, limbMat);
+  ul.position.set(0, 0.22, 0);
+  ul.rotation.z = -0.45;
+  ul.castShadow = true;
+  bow.add(ul);
+  // Lower limb
+  const llGeo = new THREE.BoxGeometry(0.03, 0.55, 0.06);
+  const ll = new THREE.Mesh(llGeo, limbMat);
+  ll.position.set(0, -0.22, 0);
+  ll.rotation.z = 0.45;
+  ll.castShadow = true;
+  bow.add(ll);
+
+  // String — thin line between limb tips
+  const stringGeo = new THREE.BufferGeometry();
+  const stringVerts = new Float32Array([
+    0, 0.48, 0.01,
+    0, -0.48, 0.01
+  ]);
+  stringGeo.setAttribute('position', new THREE.BufferAttribute(stringVerts, 3));
+  const stringMat = new THREE.LineBasicMaterial({ color: 0xddccff, linewidth: 1 });
+  const stringLine = new THREE.Line(stringGeo, stringMat);
+  bow.add(stringLine);
+
+  // Arrow rest — small shelf on riser
+  const restGeo = new THREE.BoxGeometry(0.04, 0.01, 0.12);
+  const restMat = new THREE.MeshStandardMaterial({ color: 0x3a3060, roughness: 0.5, metalness: 0.4 });
+  const rest = new THREE.Mesh(restGeo, restMat);
+  rest.position.set(0, 0.06, 0.06);
+  bow.add(rest);
+
+  // Brand emblem — small purple diamond on riser
+  const emblemGeo = new THREE.OctahedronGeometry(0.025);
+  const emblemMat = new THREE.MeshStandardMaterial({ color: 0x8c50ff, emissive: 0x8c50ff, emissiveIntensity: 0.3, roughness: 0.2, metalness: 0.8 });
+  const emblem = new THREE.Mesh(emblemGeo, emblemMat);
+  emblem.position.set(0, 0.0, 0.1);
+  emblem.rotation.y = Math.PI / 4;
+  bow.add(emblem);
+
+  // Position bow at right side of camera, slightly forward
+  bow.position.set(0.35, -0.1, -0.6);
+  bow.rotation.set(0, 0, 0);
+
+  return bow;
+}
+const bow = createBow();
+camera.add(bow);
+
+// ─── ARROW SYSTEM ───
+const arrowPool = [];
+const MAX_ARROWS = 5;
+const trailPoints = [];
+const TRAIL_MAX = 40;
+let activeArrow = null;
+
+function createArrowMesh() {
+  const group = new THREE.Group();
+  // Shockwave ring — expands on launch, fades out
+  const shockwaveGeo = new THREE.RingGeometry(0.001, 0.2, 32);
+  const shockwaveMat = new THREE.MeshBasicMaterial({ color: 0xc8a8ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+  const shockwave = new THREE.Mesh(shockwaveGeo, shockwaveMat);
+  shockwave.visible = false;
+  group.add(shockwave);
+  // Shaft — dark wood/composite
+  const shaftGeo = new THREE.CylinderGeometry(0.035, 0.035, 1.8, 6);
+  const shaftMat = new THREE.MeshStandardMaterial({ color: 0x3a2848, roughness: 0.5, metalness: 0.1 });
+  const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+  shaft.rotation.x = Math.PI / 2;
+  shaft.position.z = 0;
+  group.add(shaft);
+  // Tip — brand gold
+  const tipGeo = new THREE.ConeGeometry(0.05, 0.25, 6);
+  const tipMat = new THREE.MeshStandardMaterial({ color: 0xc8a8ff, roughness: 0.3, metalness: 0.6 });
+  const tip = new THREE.Mesh(tipGeo, tipMat);
+  tip.rotation.x = Math.PI / 2;
+  tip.position.z = 0.95;
+  group.add(tip);
+  // Fletching — light purple
+  const fletchGeo = new THREE.ConeGeometry(0.04, 0.2, 6);
+  const fletchMat = new THREE.MeshStandardMaterial({ color: 0x8c50ff, roughness: 0.6, metalness: 0.1 });
+  const fletch = new THREE.Mesh(fletchGeo, fletchMat);
+  fletch.rotation.x = Math.PI / 2;
+  fletch.position.z = -0.9;
+  group.add(fletch);
+  group.castShadow = true;
+  return group;
+}
+
+function initArrowPool() {
+  for (let i = 0; i < MAX_ARROWS; i++) {
+    const mesh = createArrowMesh();
+    mesh.visible = false;
+    mesh.position.set(0, -100, -100);
+    scene.add(mesh);
+    arrowPool.push({ mesh, active: false, velocity: new THREE.Vector3(), life: 0, flickerOffset: Math.random() * Math.PI * 2, glowIntensity: 0, flickerTimer: 0 });
+  }
+}
+initArrowPool();
+
+// Trail line
+const trailGeo = new THREE.BufferGeometry();
+const trailPositions = new Float32Array(TRAIL_MAX * 3);
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+const trailMat = new THREE.LineBasicMaterial({ color: 0x8c50ff, transparent: true, opacity: 0.5 });
+const trailLine = new THREE.Line(trailGeo, trailMat);
+scene.add(trailLine);
+trailLine.frustumCulled = false;
+
+// Hit particles — brand gold/purple sparks
+const hitParticlePool = [];
+const HIT_PARTICLE_COUNT = 20;
+function createHitParticle() {
+  const geo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+  const isGold = Math.random() > 0.5;
+  const mat = new THREE.MeshBasicMaterial({
+    color: isGold ? 0xc8a8ff : 0x8c50ff,
+    transparent: true, opacity: 1
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.visible = false;
+  scene.add(mesh);
+  return { mesh, velocity: new THREE.Vector3(), life: 0, maxLife: 0 };
+}
+for (let i = 0; i < HIT_PARTICLE_COUNT; i++) {
+  hitParticlePool.push(createHitParticle());
+}
+
+// ─── AUDIO ───
+let audioCtx = null;
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playTone(freq, duration, type, volume, rampDown) {
+  if (!audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(volume || 0.15, audioCtx.currentTime);
+    if (rampDown) {
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
+    }
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch(e) {}
+}
+function playChargeSound() {
+  if (!audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+    osc.frequency.linearRampToValueAtTime(500, audioCtx.currentTime + G.charge);
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + G.charge);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + G.charge + 0.05);
+  } catch(e) {}
+}
+let chargeSoundOsc = null;
+function stopChargeSound() {
+  if (chargeSoundOsc && chargeSoundOsc.disconnect) {
+    try { chargeSoundOsc.disconnect(); } catch(e) {}
+    chargeSoundOsc = null;
+  }
+}
+function playFireSound() {
+  playTone(180, 0.12, 'sawtooth', 0.15, true);
+  playTone(70, 0.08, 'square', 0.06, true);
+}
+function playHitSound(points) {
+  playTone(400, 0.08, 'sine', 0.12, true);
+  setTimeout(() => playTone(600, 0.08, 'sine', 0.1, true), 70);
+  if (points >= 50) {
+    setTimeout(() => playTone(800, 0.12, 'sine', 0.12, true), 140);
+    setTimeout(() => playTone(1000, 0.15, 'sine', 0.1, true), 240);
+  }
+}
+function playFanfare() {
+  const notes = [523, 659, 784, 1047];
+  notes.forEach((n, i) => {
+    setTimeout(() => playTone(n, 0.25, 'sine', 0.1, true), i * 110);
+  });
+}
+
+// ─── INPUT ───
+const keys = {};
+const mouse = { dx: 0, dy: 0, moved: false };
+document.addEventListener('keydown', e => { keys[e.code] = true; });
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+document.addEventListener('mousemove', e => {
+  if (G.state !== 'PLAYING' || G.paused) return;
+  mouse.dx += e.movementX;
+  mouse.dy += e.movementY;
+  mouse.moved = true;
+});
+
+// Pointer lock
+renderer.domElement.addEventListener('click', () => {
+  if (G.state === 'PLAYING') {
+    renderer.domElement.requestPointerLock();
+  }
+});
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === renderer.domElement) {
+    G.paused = false;
+    document.getElementById('resume-overlay').classList.remove('active');
+  } else if (G.state === 'PLAYING') {
+    G.paused = true;
+    document.getElementById('resume-overlay').classList.add('active');
+  }
+});
+document.getElementById('resume-btn').addEventListener('click', () => {
+  renderer.domElement.requestPointerLock();
+});
+
+// ─── UI ELEMENTS ───
+const elTitleScreen = document.getElementById('title-screen');
+const elHud = document.getElementById('hud');
+const elChargeBar = document.getElementById('charge-bar-wrap');
+const elChargeFill = document.getElementById('charge-fill');
+const elScore = document.getElementById('score-display');
+const elTimer = document.getElementById('timer-display');
+const elHits = document.getElementById('hits-display');
+const elCombo = document.getElementById('combo-display');
+const elSlowMo = document.getElementById('slowmo-badge');
+const elHitBanner = document.getElementById('hit-banner');
+const elEndScreen = document.getElementById('end-screen');
+const elFinalScore = document.getElementById('final-score');
+const elGrade = document.getElementById('grade-display');
+const elNameInput = document.getElementById('name-input');
+const elLeaderboardList = document.getElementById('leaderboard-list');
+const elOfflineMsg = document.getElementById('offline-msg');
+
+// ─── GAME LOGIC ───
+function startGame() {
+  if (G.state === 'PLAYING') return;
+  if (!audioCtx) initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  G.state = 'PLAYING';
+  G.score = 0;
+  G.hits = 0;
+  G.timeLeft = 60;
+  G.combo = 0;
+  G.comboTimer = 0;
+  G.charge = 0;
+  G.charging = false;
+  G.slowMo = 1;
+  G.targetsHit = 0;
+  G.lastHitTime = 0;
+  G.shakeAmount = 0;
+  G.bobTimer = 0;
+  playerPos.set(0, PLAYER_HEIGHT, 20);
+  playerVelocity.set(0, 0, 0);
+  playerOnGround = true;
+  yaw = 0; pitch = 0;
+  pivot.rotation.set(0, 0, 0);
+  camera.rotation.set(0, 0, 0);
+  // Reset bow
+  bow.rotation.set(0, 0, 0);
+  bow.position.set(0.35, -0.1, -0.6);
+  targetData.forEach(td => { td.alive = true; td.respawnTimer = 0; });
+  arrowPool.forEach(a => { a.active = false; a.mesh.visible = false; a.life = 0; });
+  activeArrow = null;
+  trailGeo.setDrawRange(0, 0);
+  trailGeo.attributes.position.array.fill(0);
+  trailGeo.attributes.position.needsUpdate = true;
+  dustGeo.attributes.position.array.forEach((v, i) => {
+    if (i % 3 === 1) dustGeo.attributes.position.array[i] = Math.random() * 20 + 2;
+  });
+  dustGeo.attributes.position.needsUpdate = true;
+  elTitleScreen.classList.add('hidden');
+  elHud.classList.remove('hidden');
+  elChargeBar.classList.remove('hidden');
+  elEndScreen.classList.remove('active');
+  elCombo.classList.remove('visible');
+  elSlowMo.classList.remove('visible');
+  elHitBanner.classList.remove('visible');
+  G.paused = false;
+  renderer.domElement.requestPointerLock();
+  updateHUD();
+}
+
+function fireArrow() {
+  if (activeArrow) return;
+  const speed = G.arrowSpeedMin + G.charge * (G.arrowSpeedMax - G.arrowSpeedMin);
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+  // Spawn from arrow rest on bow, in camera-local space transformed to world
+  const spawnOffset = new THREE.Vector3(0.35, -0.1, -0.3);
+  camera.localToWorld(spawnOffset);
+  const arrow = arrowPool.find(a => !a.active);
+  if (!arrow) return;
+  arrow.active = true;
+  arrow.mesh.visible = true;
+  arrow.mesh.position.copy(spawnOffset);
+  arrow.velocity.copy(dir).multiplyScalar(speed);
+  arrow.life = 3.0;
+  arrow.flickerOffset = Math.random() * Math.PI * 2;
+  arrow.glowIntensity = 1.0;
+  arrow.flickerTimer = 0;
+  // Trigger shockwave ring
+  const sw = arrow.mesh.children[0];
+  if (sw) { sw.visible = true; sw.scale.set(1, 1, 1); }
+  activeArrow = arrow;
+  arrow.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+  trailPoints.length = 0;
+  trailPoints.push(arrow.mesh.position.x, arrow.mesh.position.y, arrow.mesh.position.z);
+  trailGeo.setDrawRange(0, 1);
+  G.charge = 0;
+  elChargeFill.style.width = '0%';
+  playFireSound();
+  G.shakeAmount = 0.12;
+  // Bow recoil — trigger spring-back recovery via bowRecoilAmount
+  bowRecoilAmount = 0.05;
+}
+
+function checkTargetHits() {
+  if (!activeArrow) return;
+  const ax = activeArrow.mesh.position.x;
+  const ay = activeArrow.mesh.position.y;
+  const az = activeArrow.mesh.position.z;
+
+  for (let i = 0; i < targetData.length; i++) {
+    const td = targetData[i];
+    if (!td.alive) continue;
+    const gx = td.group.position.x;
+    const gy = td.group.position.y;
+    const gz = td.group.position.z;
+
+    // Check world-space distance to target group center (generous hit sphere)
+    const dx = ax - gx, dy = ay - gy, dz = az - gz;
+    const worldDist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    // Hit if arrow is within 4.0 units of target center
+    if (worldDist > 4.0) continue;
+
+    // World-space XY distance for reliable hit scoring (invariant under target rotation)
+    const worldRingDist = Math.sqrt(
+      Math.pow(ax - gx, 2) + Math.pow(ay - gy - 0.8, 2)
+    );
+    let points = 0, ring = 2;
+    // Score based on ring zones; any hit inside the glow area counts
+    if (worldRingDist < RING_SIZES[0]) { points = RING_POINTS[0]; ring = 0; }
+    else if (worldRingDist < RING_SIZES[1]) { points = RING_POINTS[1]; ring = 1; }
+    else { points = RING_POINTS[2]; ring = 2; } // all arrows within 4.0 pre-filter count as outer ring hit
+
+    // Hit!
+    G.combo++;
+    G.comboTimer = 3.0;
+    const comboMult = Math.min(G.combo, 5);
+    const earned = points * comboMult;
+    G.score += earned;
+    G.hits++;
+    G.targetsHit++;
+    showHitBanner(earned, comboMult);
+    spawnHitParticles(gx, gy, gz);
+    if (ring === 0) {
+      G.slowMo = 0.35;
+      elSlowMo.classList.add('visible');
+      setTimeout(() => elSlowMo.classList.remove('visible'), 400);
+    }
+    td.alive = false;
+    td.group.visible = false;
+    td.respawnTimer = 2.0;
+    playHitSound(points);
+    G.shakeAmount = 0.06 * (ring === 0 ? 2 : 1);
+    activeArrow.active = false;
+    activeArrow.mesh.visible = false;
+    activeArrow = null;
+    trailGeo.setDrawRange(0, 0);
+    updateHUD();
+    return;
+  }
+}
+
+function showHitBanner(pts, mult) {
+  elHitBanner.textContent = `+${pts}${mult > 1 ? ` x${mult}` : ''}`;
+  elHitBanner.classList.add('visible');
+  setTimeout(() => elHitBanner.classList.remove('visible'), 600);
+  if (mult >= 2) {
+    elCombo.textContent = `${mult}x COMBO`;
+    elCombo.classList.add('visible');
+    setTimeout(() => elCombo.classList.remove('visible'), 800);
+  }
+}
+
+function spawnHitParticles(x, y, z) {
+  let used = 0;
+  for (const p of hitParticlePool) {
+    if (p.life > 0 && p.mesh.visible) continue;
+    if (used >= 8) break;
+    p.mesh.visible = true;
+    p.mesh.position.set(x + (Math.random() - 0.5) * 0.5, y + (Math.random() - 0.5) * 0.5, z + (Math.random() - 0.5) * 0.5);
+    p.velocity.set((Math.random() - 0.5) * 4, Math.random() * 3 + 1, (Math.random() - 0.5) * 4);
+    p.life = 0.6 + Math.random() * 0.4;
+    p.maxLife = p.life;
+    used++;
+  }
+}
+
+function updateDust(dt) {
+  const pos = dustGeo.attributes.position.array;
+  for (let i = 0; i < dustCount; i++) {
+    let y = pos[i * 3 + 1];
+    y += Math.sin(performance.now() * 0.001 + i) * 0.02;
+    if (y > 22) y = 2;
+    pos[i * 3 + 1] = y;
+  }
+  dustGeo.attributes.position.needsUpdate = true;
+}
+
+function updateTrail() {
+  if (!activeArrow) return;
+  trailPoints.push(activeArrow.mesh.position.x, activeArrow.mesh.position.y, activeArrow.mesh.position.z);
+  if (trailPoints.length / 3 > TRAIL_MAX) trailPoints.splice(0, 3);
+  const tp = trailGeo.attributes.position.array;
+  for (let i = 0; i < trailPoints.length; i++) tp[i] = trailPoints[i];
+  trailGeo.attributes.position.needsUpdate = true;
+  trailGeo.setDrawRange(0, trailPoints.length / 3);
+}
+
+function updateHitParticles(dt) {
+  for (const p of hitParticlePool) {
+    if (!p.mesh.visible) continue;
+    p.life -= dt;
+    if (p.life <= 0) { p.mesh.visible = false; continue; }
+    p.mesh.position.x += p.velocity.x * dt;
+    p.mesh.position.y += p.velocity.y * dt;
+    p.mesh.position.z += p.velocity.z * dt;
+    p.velocity.y -= 9.8 * dt;
+    p.mesh.material.opacity = Math.max(0, p.life / p.maxLife);
+  }
+}
+
+function updateSlowMo(dt) {
+  if (G.slowMo < 1) {
+    G.slowMo = Math.min(1, G.slowMo + dt * 1.5);
+  }
+}
+
+function updateTargets(dt) {
+  for (const td of targetData) {
+    if (td.alive) {
+      td.glowPhase += dt * 5;
+      const flicker = 2 + Math.sin(td.glowPhase) * 0.5;
+      td.group.children.forEach(child => {
+        if (child.material && child.material.emissive) {
+          child.material.emissiveIntensity = flicker * 0.3;
+        }
+      });
+    } else {
+      td.respawnTimer -= dt;
+      if (td.respawnTimer <= 0) {
+        td.alive = true;
+        td.group.visible = true;
+        // Respawn at a new position within bounds
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 5 + Math.random() * 10;
+        const newTx = Math.cos(angle) * dist;
+        const newTz = Math.sin(angle) * dist;
+        const newGroundY = getTerrainHeight(newTx, newTz);
+        td.group.position.set(newTx, newGroundY, newTz);
+        td.group.children.forEach(child => {
+          if (child.material && child.material.emissive) {
+            child.material.emissiveIntensity = 0;
+          }
+        });
+      }
+    }
+  }
+}
+
+function updateArrow(dt) {
+  if (!activeArrow) return;
+  activeArrow.life -= dt;
+  if (activeArrow.life <= 0 || activeArrow.mesh.position.y < -5) {
+    // Reset shockwave ring before deactivation
+    const sw = activeArrow.mesh.children[0];
+    if (sw) { sw.visible = false; sw.scale.set(1, 1, 1); sw.material.opacity = 0.6; }
+    activeArrow.active = false;
+    activeArrow.mesh.visible = false;
+    activeArrow = null;
+    trailGeo.setDrawRange(0, 0);
+    return;
+  }
+  const slowedDt = dt * G.slowMo;
+  const substeps = 8;
+  const subDt = slowedDt / substeps;
+  for (let s = 0; s < substeps; s++) {
+    activeArrow.mesh.position.x += activeArrow.velocity.x * subDt;
+    activeArrow.mesh.position.y += activeArrow.velocity.y * subDt;
+    activeArrow.mesh.position.z += activeArrow.velocity.z * subDt;
+    activeArrow.velocity.y -= G.arrowGravity * subDt;
+    if (s === 0) updateTrail();
+    checkTargetHits();
+    if (!activeArrow) return;
+  }
+  // Animate shockwave ring — expand and fade
+  const shockwave = activeArrow.mesh.children[0];
+  if (shockwave && shockwave.visible) {
+    const sw = shockwave.scale;
+    sw.x += dt * 3.0;
+    sw.y += dt * 3.0;
+    shockwave.material.opacity = Math.max(0, 0.6 - dt * 2.5);
+    if (sw.x > 4.0) shockwave.visible = false;
+  }
+  // Flicker effect on shaft — oscillate opacity based on flight time
+  const shaft = activeArrow.mesh.children[1];
+  if (shaft && shaft.material) {
+    const flickerVal = 0.5 + 0.5 * Math.sin(activeArrow.life * 12 + activeArrow.flickerOffset);
+    shaft.material.opacity = 0.6 + 0.4 * flickerVal;
+  }
+  // Glow intensity decays over time
+  activeArrow.glowIntensity = Math.max(0, activeArrow.glowIntensity - dt * 0.8);
+  if (activeArrow.glowIntensity > 0 && activeArrow.mesh.children[2]) {
+    const tip = activeArrow.mesh.children[2];
+    if (tip.material && tip.material.emissive) {
+      tip.material.emissiveIntensity = activeArrow.glowIntensity * 0.8;
+    }
+  }
+}
+
+function updatePlayer(dt) {
+  if (mouse.moved) {
+    yaw -= mouse.dx * 0.002;
+    pitch -= mouse.dy * 0.002;
+    pitch = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, pitch));
+    mouse.dx = 0; mouse.dy = 0; mouse.moved = false;
+    pivot.rotation.set(0, yaw, 0);
+    camera.rotation.set(pitch, 0, 0);
+  }
+
+  // Head bob — camera local position only
+  if (G.state === 'PLAYING' && !G.paused && (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'])) {
+    G.bobTimer += dt * 10;
+    const bobAmount = Math.sin(G.bobTimer) * 0.025;
+    camera.position.set(0, bobAmount, 0);
+  } else if (camera.position.y !== 0) {
+    camera.position.set(0, 0, 0);
+  }
+
+  // Collision-aware movement
+  const forward = new THREE.Vector3(0, 0, -1);
+  forward.applyQuaternion(pivot.quaternion);
+  forward.y = 0; forward.normalize();
+  const right = new THREE.Vector3(1, 0, 0);
+  right.applyQuaternion(pivot.quaternion);
+  right.y = 0; right.normalize();
+
+  const moveDir = new THREE.Vector3();
+  if (keys['KeyW']) moveDir.add(forward);
+  if (keys['KeyS']) moveDir.sub(forward);
+  if (keys['KeyA']) moveDir.sub(right);
+  if (keys['KeyD']) moveDir.add(right);
+
+  // Track previous raw terrain height for drop detection
+  const prevRawGy = prevSurfaceY;
+
+  // Movement with block stepping
+  if (moveDir.length() > 0) {
+    moveDir.normalize();
+    const speed = keys['ShiftLeft'] ? playerSpeed * 0.5 : playerSpeed;
+    const testX = playerPos.x + moveDir.x * speed * dt;
+    const testZ = playerPos.z + moveDir.z * speed * dt;
+    const nextGroundY = getTerrainHeight(testX, testZ);
+    const curGroundY = getTerrainHeight(playerPos.x, playerPos.z);
+    const blockHeightAtNext = nextGroundY - curGroundY;
+    const canStepUp = blockHeightAtNext <= 0.4;
+    const blocked = (!playerOnGround && blockHeightAtNext > canStepUp);
+    if (!blocked) {
+      playerPos.x = testX;
+      playerPos.z = testZ;
+    }
+  }
+
+  // Gravity & jump
+  if (keys['Space'] && playerOnGround) {
+    playerVelocity.y = 8;
+    playerOnGround = false;
+  }
+  if (!playerOnGround) {
+    playerVelocity.y -= 20 * dt;
+  }
+  playerPos.y += playerVelocity.y * dt;
+
+  // Ground check at current position
+  const groundY = getTerrainHeight(playerPos.x, playerPos.z);
+  const feetY = playerPos.y - PLAYER_HEIGHT;
+
+  // Drop detection: if player was on ground but terrain at current position is now lower
+  if (playerOnGround && groundY < prevRawGy - 0.05) {
+    playerOnGround = false;
+  }
+
+  // Ground collision: snap to ground if feet below terrain surface
+  if (feetY <= groundY) {
+    playerPos.y = groundY + PLAYER_HEIGHT;
+    playerVelocity.y = 0;
+    playerOnGround = true;
+  }
+
+  prevSurfaceY = groundY;
+
+  // Clamp to terrain bounds
+  const halfWidth = TERRAIN_HALF;
+  playerPos.x = Math.max(-halfWidth + 1, Math.min(halfWidth - 1, playerPos.x));
+  playerPos.z = Math.max(-halfWidth + 1, Math.min(halfWidth - 1, playerPos.z));
+
+  // Update camera rig position
+  pivot.position.set(playerPos.x, playerPos.y, playerPos.z);
+}
+
+function updateCharge(dt) {
+  if (G.charging) {
+    G.charge = Math.min(G.charge + dt, G.maxCharge);
+    elChargeFill.style.width = (G.charge / G.maxCharge * 100) + '%';
+  }
+}
+
+function updateCombo(dt) {
+  if (G.combo > 0) {
+    G.comboTimer -= dt;
+    if (G.comboTimer <= 0) {
+      G.combo = 0;
+      elCombo.classList.remove('visible');
+    }
+  }
+}
+
+function updateTimer(dt) {
+  const slowedDt = dt * G.slowMo;
+  G.timeLeft -= slowedDt;
+  if (G.timeLeft <= 0) {
+    G.timeLeft = 0;
+    endGame();
+  }
+}
+
+function updateHUD() {
+  elScore.textContent = `SCORE: ${G.score}`;
+  elTimer.textContent = `TIME: ${Math.ceil(G.timeLeft)}`;
+  elHits.textContent = `HITS: ${G.hits}`;
+}
+
+function updateScreenShake() {
+  if (G.shakeAmount > 0) {
+    G.shakeAmount *= 0.9;
+    if (G.shakeAmount < 0.001) G.shakeAmount = 0;
+    camera.position.x += (Math.random() - 0.5) * G.shakeAmount * 2;
+    camera.position.y += (Math.random() - 0.5) * G.shakeAmount * 2;
+  }
+}
+
+// Bow aim sway — subtle pivot to follow look direction
+// Bow aim sway + recoil recovery
+function updateBow(dt) {
+  if (G.state !== 'PLAYING' || G.paused) return;
+  // Recoil recovery — spring back to rest position
+  bowRecoilAmount *= Math.pow(0.001, dt); // exponential decay
+  bow.position.x = 0.35 - bowRecoilAmount;
+  // Gentle sway to match pitch
+  const swayAmount = pitch * 0.08;
+  bow.rotation.x = swayAmount;
+  // Subtle roll with mouse
+  const rollAmount = yaw * 0.015;
+  bow.rotation.z = rollAmount;
+}
+
+// LMB charge/fire
+document.addEventListener('mousedown', e => {
+  if (G.state !== 'PLAYING' || G.paused) return;
+  if (e.button === 0) {
+    G.charging = true;
+    G.charge = 0;
+    playChargeSound();
+  }
+});
+document.addEventListener('mouseup', e => {
+  if (G.state !== 'PLAYING' || G.paused) return;
+  if (e.button === 0 && G.charging) {
+    G.charging = false;
+    stopChargeSound();
+    if (G.charge > 0.05) fireArrow();
+  }
+});
+
+// ─── LEADERBOARD ───
+function getStoredName() {
+  return localStorage.getItem('archersPeakName') || '';
+}
+function setStoredName(name) {
+  localStorage.setItem('archersPeakName', name);
+}
+function getStoredScores() {
+  try { return JSON.parse(localStorage.getItem('archersPeakScores') || '[]'); }
+  catch { return []; }
+}
+function setStoredScores(scores) {
+  localStorage.setItem('archersPeakScores', JSON.stringify(scores));
+}
+
+async function submitScore(name, score) {
+  const cleanName = name.replace(/<[^>]*>/g, '').trim().substring(0, 12);
+  if (cleanName.length < 1 || cleanName.length > 12) return false;
+  if (!Number.isInteger(score) || score < 0 || score > 5000) return false;
+  try {
+    const resp = await fetch('/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: cleanName, score })
+    });
+    if (resp.status === 500) throw new Error('Server error');
+    return resp.ok;
+  } catch {
+    const scores = getStoredScores();
+    scores.push({ name: cleanName, score });
+    scores.sort((a, b) => b.score - a.score);
+    setStoredScores(scores.slice(0, 100));
+    return true;
+  }
+}
+
+async function loadLeaderboard(playerName, playerScore) {
+  elLeaderboardList.innerHTML = '';
+  try {
+    const resp = await fetch('/api/leaderboard');
+    if (resp.status === 500) throw new Error('Server error');
+    const data = await resp.json();
+    renderLeaderboard(data, playerName, playerScore);
+    elOfflineMsg.classList.add('hidden');
+  } catch {
+    const scores = getStoredScores();
+    renderLeaderboard(scores.slice(0, 10), playerName, playerScore);
+    elOfflineMsg.classList.remove('hidden');
+  }
+}
+
+function renderLeaderboard(data, playerName, playerScore) {
+  const list = elLeaderboardList;
+  list.innerHTML = '';
+  if (!data || data.length === 0) {
+    list.innerHTML = '<div style="color:rgba(180,160,255,.4);padding:.5em">No scores yet</div>';
+    return;
+  }
+  data.forEach((entry, idx) => {
+    const row = document.createElement('div');
+    row.className = 'lb-row';
+    if (entry.name === playerName && entry.score === playerScore) {
+      row.classList.add('highlighted');
+    }
+    row.innerHTML = `
+      <span class="lb-place">${idx + 1}</span>
+      <span class="lb-name">${escapeHtml(entry.name)}</span>
+      <span class="lb-score">${entry.score}</span>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ─── GAME END ───
+function endGame() {
+  G.state = 'ENDED';
+  document.exitPointerLock();
+  G.paused = true;
+  elHud.classList.add('hidden');
+  elChargeBar.classList.add('hidden');
+  elEndScreen.classList.add('active');
+  animateScore(G.score);
+  let grade = 'C', gradeClass = 'grade-C';
+  if (G.score >= 500) { grade = 'S'; gradeClass = 'grade-S'; }
+  else if (G.score >= 300) { grade = 'A'; gradeClass = 'grade-A'; }
+  else if (G.score >= 150) { grade = 'B'; gradeClass = 'grade-B'; }
+  elGrade.textContent = grade;
+  elGrade.className = gradeClass;
+  const storedName = getStoredName();
+  if (storedName) elNameInput.value = storedName;
+  elNameInput.focus();
+  document.getElementById('submit-btn').onclick = async () => {
+    const name = elNameInput.value.trim();
+    if (name) setStoredName(name);
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('submit-btn').textContent = 'SENDING...';
+    await submitScore(name || 'Anonymous', G.score);
+    await loadLeaderboard(name || 'Anonymous', G.score);
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('submit-btn').textContent = 'SUBMIT';
+  };
+  playFanfare();
+}
+
+function animateScore(target) {
+  let current = 0;
+  const step = Math.max(1, Math.floor(target / 60));
+  const interval = setInterval(() => {
+    current = Math.min(current + step, target);
+    elFinalScore.textContent = current;
+    if (current >= target) {
+      clearInterval(interval);
+      elFinalScore.textContent = target;
+    }
+  }, 16);
+}
+
+// ─── EVENT LISTENERS ───
+// The title-screen transition is handled automatically in the animate loop.
+// startGame() will be called immediately; the camera will smoothly fly back to the player.
+document.getElementById('start-btn').addEventListener('click', (e) => { e.stopPropagation(); startGame(); });
+document.getElementById('title-screen').addEventListener('click', (e) => { if (e.target === document.getElementById('title-screen')) startGame(); });
+document.getElementById('restart-btn').addEventListener('click', () => {
+  elEndScreen.classList.remove('active');
+  startGame();
+});
+
+// ─── RESIZE ───
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─── TITLE SCREEN CAMERA ORBIT ───
+// Title: camera detatched from pivot → placed in world-space for free orbital orbit
+// Transition to game: camera smoothly flies back to pivot → reparented for FPS view
+const TITLE_CAMERA_DIST = 55;
+const TITLE_CAMERA_ELEVATION = 40; // degrees above horizon
+let titleOrbitYaw = 0;
+let titleOrbitPitch = TITLE_CAMERA_ELEVATION * Math.PI / 180;
+let titleOrbitSpeed = 0.6; // one full orbit every ~10 seconds
+let titleBobAmp = 3;
+let titleBobSpeed = 0.4;
+let titleExitT = 0; // 0 = still in title cam, 1 = fully back in pivot
+let titleCamReparented = false; // tracks whether camera was moved off pivot
+
+// Reparent camera from pivot to scene root for free world-space positioning
+// (pivot stays in scene — we only reparent the camera)
+function detachCameraFromPivot() {
+  pivot.remove(camera);
+  scene.add(camera);
+  titleCamReparented = true;
+}
+
+// Reparent camera back to pivot for FPS view
+function attachCameraToPivot() {
+  scene.remove(camera);
+  pivot.add(camera);
+  titleCamReparented = false;
+}
+
+// Called each frame when G.state === 'TITLE' — orbits the overhead camera
+function updateTitleCamera(dt) {
+  // On first TITLE frame, detach camera and set initial orbit
+  if (!titleCamReparented) {
+    detachCameraFromPivot();
+    titleOrbitYaw = 0;
+  }
+  // Slowly orbit overhead
+  titleOrbitYaw += dt * titleOrbitSpeed;
+  const bob = Math.sin(titleOrbitYaw * 0.2 + performance.now() * 0.0008 * titleBobSpeed) * titleBobAmp;
+  const dist = TITLE_CAMERA_DIST + bob;
+  camera.position.set(
+    Math.cos(titleOrbitYaw) * dist,
+    Math.sin(titleOrbitPitch) * dist,
+    Math.sin(titleOrbitYaw) * dist
+  );
+  camera.lookAt(0, 0, 0);
+}
+
+// Called each frame when transitioning from TITLE → PLAYING
+// Smoothly flies camera from orbit position back to player, then re-parents to pivot
+function updateCameraExit(dt) {
+  if (!titleCamReparented) return; // camera is still on pivot (already exited)
+  if (titleExitT >= 1) {
+    // Fully transitioned — re-parent to pivot at final position
+    const finalPos = playerPos.clone().add(new THREE.Vector3(0, PLAYER_HEIGHT, 0));
+    camera.position.copy(finalPos);
+    camera.lookAt(finalPos.clone().add(new THREE.Vector3(0, 0, -1)));
+    attachCameraToPivot();
+    pivot.rotation.set(0, 0, 0);
+    camera.rotation.set(0, 0, 0);
+    titleExitT = 1;
+    return;
+  }
+  // Advance transition
+  titleExitT = Math.min(1, titleExitT + dt * 2.5);
+  const t = titleExitT * titleExitT * (3 - 2 * titleExitT); // smoothstep
+  // Lerp from orbit position to player position
+  const orbitEndPos = new THREE.Vector3(
+    Math.cos(titleOrbitYaw) * TITLE_CAMERA_DIST,
+    Math.sin(titleOrbitPitch) * TITLE_CAMERA_DIST,
+    Math.sin(titleOrbitYaw) * TITLE_CAMERA_DIST
+  );
+  const playerWorldPos = playerPos.clone().add(new THREE.Vector3(0, PLAYER_HEIGHT, 0));
+  camera.position.lerpVectors(orbitEndPos, playerWorldPos, t);
+  // Camera looks toward player head
+  camera.lookAt(playerWorldPos.x, playerWorldPos.y + 0.3, playerWorldPos.z);
+  // Once fully transitioned, re-parent to pivot
+  if (titleExitT >= 1) {
+    camera.position.copy(playerWorldPos);
+    camera.lookAt(playerWorldPos.clone().add(new THREE.Vector3(0, 0, -1)));
+    attachCameraToPivot();
+    pivot.rotation.set(0, 0, 0);
+    camera.rotation.set(0, 0, 0);
+  }
+}
+
+// ─── MAIN LOOP ───
+let lastTime = performance.now();
+function animate(now) {
+  requestAnimationFrame(animate);
+  let dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+
+  if (G.state === 'PLAYING' && !G.paused) {
+    const slowedDt = dt * G.slowMo;
+    updatePlayer(slowedDt);
+    updateBow(dt);
+    updateCharge(slowedDt);
+    updateTimer(slowedDt);
+    updateCombo(slowedDt);
+    updateTargets(slowedDt);
+    updateArrow(dt);
+    updateSlowMo(slowedDt);
+    updateDust(dt);
+    updateHitParticles(dt);
+    updateScreenShake();
+    updateHUD();
+    updateCameraExit(dt);
+  } else if (G.state === 'PLAYING' && G.paused) {
+    updateDust(dt);
+    updateHitParticles(dt);
+  } else if (G.state === 'ENDED') {
+    updateDust(dt);
+    updateHitParticles(dt);
+  } else if (G.state === 'TITLE') {
+    updateDust(dt);
+    updateTitleCamera(dt);
+  }
+
+  // Control title screen visibility
+  const titleScreen = document.getElementById('title-screen');
+  if (G.state === 'TITLE') {
+    titleScreen.classList.remove('hidden');
+  } else {
+    titleScreen.classList.add('hidden');
+  }
+
+  // Control crosshair visibility
+  const crosshair = document.getElementById('crosshair');
+  if (G.state === 'PLAYING') {
+    crosshair.classList.add('visible');
+  } else {
+    crosshair.classList.remove('visible');
+  }
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
