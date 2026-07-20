@@ -346,24 +346,37 @@ const dustMat = new THREE.PointsMaterial({
 const dustPoints = new THREE.Points(dustGeo, dustMat);
 scene.add(dustPoints);
 
-// ─── BRAND ASSET SPRITES — place PNG logos in the world ───
+// ─── BRAND ASSET SPRITES — floating star-like logos on the map ───
 const spriteLoader = new THREE.TextureLoader();
 const brandSprites = [];
 function createBrandSprites() {
   const assets = [
+    // HuggingFace logo — star-like placement
+    { file: 'assets/k-ai-transparent.png', pos: [-12, 10, -14], scale: 3.2 },
+    { file: 'assets/k-ai-transparent.png', pos: [15, 12, -10], scale: 3.8 },
+    { file: 'assets/k-ai-transparent.png', pos: [8, 14, 16], scale: 2.8 },
+    // Solar logo — star-like placement
+    { file: 'assets/solar-star.png', pos: [-8, 11, 12], scale: 4 },
+    { file: 'assets/solar-star.png', pos: [18, 9, 6], scale: 3.5 },
+    { file: 'assets/solar-star.png', pos: [-15, 13, -5], scale: 3 },
+    // Solar Open — main brand
     { file: 'assets/solar-open.png', pos: [0, 8, 10], scale: 5 },
+    // Solar LLM
+    { file: 'assets/solar-llm.png', pos: [10, 7, -18], scale: 3.5 },
+    { file: 'assets/solar-llm.png', pos: [-20, 10, -8], scale: 2.8 },
   ];
-  assets.forEach(a => {
+  assets.forEach((a, i) => {
     try {
       const tex = spriteLoader.load(a.file);
       tex.minFilter = THREE.LinearFilter;
       tex.magFilter = THREE.LinearFilter;
-      const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending });
+      const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
       const sprite = new THREE.Sprite(spriteMat);
       sprite.position.set(a.pos[0], a.pos[1], a.pos[2]);
       sprite.scale.set(a.scale, a.scale, 1);
       scene.add(sprite);
-      brandSprites.push(sprite);
+      // Each sprite gets its own gentle bob phase so they float like stars
+      brandSprites.push({ sprite, baseY: a.pos[1], bobPhase: Math.random() * Math.PI * 2, bobAmp: 0.6 + Math.random() * 0.8 });
     } catch(e) {}
   });
 }
@@ -889,6 +902,13 @@ function updateDust(dt) {
   dustGeo.attributes.position.needsUpdate = true;
 }
 
+function updateBrandSprites(dt) {
+  const t = performance.now() * 0.001;
+  brandSprites.forEach(s => {
+    s.sprite.position.y = s.baseY + Math.sin(t * 0.8 + s.bobPhase) * s.bobAmp;
+  });
+}
+
 function updateTrail() {
   if (!activeArrow) return;
   trailPoints.push(activeArrow.mesh.position.x, activeArrow.mesh.position.y, activeArrow.mesh.position.z);
@@ -1407,18 +1427,22 @@ function animate(now) {
     updateArrow(dt);
     updateSlowMo(slowedDt);
     updateDust(dt);
+    updateBrandSprites(dt);
     updateHitParticles(dt);
     updateScreenShake();
     updateHUD();
     updateCameraExit(dt);
   } else if (G.state === 'PLAYING' && G.paused) {
     updateDust(dt);
+    updateBrandSprites(dt);
     updateHitParticles(dt);
   } else if (G.state === 'ENDED') {
     updateDust(dt);
+    updateBrandSprites(dt);
     updateHitParticles(dt);
   } else if (G.state === 'TITLE') {
     updateDust(dt);
+    updateBrandSprites(dt);
     updateTitleCamera(dt);
   }
 
